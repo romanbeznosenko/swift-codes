@@ -53,3 +53,4 @@ python_files/tests/*/.data/*/.coverage*
 src/testTestingRootWkspc/coverageWorkspace/.coverage
 .venv/
 **/__pycache__/**
+custom_exceptions/__pycache__/
