@@ -164,57 +164,53 @@ class ParseSwiftDataTest(unittest.TestCase):
     def test_valid_dataset_1(self):
         """
         Test case: A valid CSV file with a single SWIFT code is passed to the parse_swift_data function.
-        Expected behavior: The function correctly parses the file and returns a DataFrame with the expected data.
+        Expected behavior: The function correctly parses the file and returns a list of dictionaries with the expected data.
         """
         result = parse_swift_data("test/data/test_5.csv")
 
-        self.assertEqual(result['SWIFT CODE'][0], "AAISALTRXXX")
-        self.assertEqual(result['COUNTRY ISO2 CODE'][0], "AL")
-        self.assertEqual(result['COUNTRY NAME'][0], "ALBANIA")
-        self.assertEqual(result['NAME'][0], "UNITED BANK OF ALBANIA SH.A")
-        self.assertEqual(result['TOWN NAME'][0], "TIRANA")
-        self.assertEqual(result['TYPE'][0], "HEADQUARTERS")
-        self.assertEqual(result['HEADQUARTER_SWIFT_CODE'][0], "AAISALTRXXX")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['swift_code'], "AAISALTRXXX")
+        self.assertEqual(result[0]['country_ISO2'], "AL")
+        self.assertEqual(result[0]['country_name'], "ALBANIA")
+        self.assertEqual(result[0]['bank_name'], "UNITED BANK OF ALBANIA SH.A")
+        self.assertEqual(result[0]['is_headquarter'], True)
 
     def test_valid_dataset_2(self):
         """
         Test case: A valid CSV file with a single SWIFT code is passed to the parse_swift_data function.
-        Expected behavior: The function correctly parses the file and returns a DataFrame with the expected data.
+        Expected behavior: The function correctly parses the file and returns a list of dictionaries with the expected data.
         """
         result = parse_swift_data("test/data/test_6.csv")
 
-        self.assertEqual(result['SWIFT CODE'][0], "ABIEBGS1XXX")
-        self.assertEqual(result['COUNTRY ISO2 CODE'][0], "BG")
-        self.assertEqual(result['COUNTRY NAME'][0], "BULGARIA")
-        self.assertEqual(result['NAME'][0], "ABV INVESTMENTS LTD")
-        self.assertEqual(result['TOWN NAME'][0], "VARNA")
-        self.assertEqual(result['TYPE'][0], "HEADQUARTERS")
-        self.assertEqual(result['HEADQUARTER_SWIFT_CODE'][0], "ABIEBGS1XXX")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['swift_code'], "ABIEBGS1XXX")
+        self.assertEqual(result[0]['country_ISO2'], "BG")
+        self.assertEqual(result[0]['country_name'], "BULGARIA")
+        self.assertEqual(result[0]['bank_name'], "ABV INVESTMENTS LTD")
+        self.assertEqual(result[0]['is_headquarter'], True)
 
     def test_valid_dataset_3(self):
         """
         Test case: A valid CSV file with a headquarters and a branch SWIFT code is passed to the parse_swift_data function.
-        Expected behavior: The function correctly parses the file and returns a DataFrame with the headquarters and branch properly identified.
+        Expected behavior: The function correctly parses the file and returns a list of dictionaries with the headquarters and branch properly identified.
         """
         result = parse_swift_data("test/data/test_7.csv")
-
+        
+        self.assertEqual(len(result), 2)
+        
         # Verify headquarters data
-        self.assertEqual(result['SWIFT CODE'][0], "ABIEBGS1XXX")
-        self.assertEqual(result['COUNTRY ISO2 CODE'][0], "BG")
-        self.assertEqual(result['COUNTRY NAME'][0], "BULGARIA")
-        self.assertEqual(result['NAME'][0], "ABV INVESTMENTS LTD")
-        self.assertEqual(result['TOWN NAME'][0], "VARNA")
-        self.assertEqual(result['TYPE'][0], "HEADQUARTERS")
-        self.assertEqual(result['HEADQUARTER_SWIFT_CODE'][0], "ABIEBGS1XXX")
+        self.assertEqual(result[0]['swift_code'], "ABIEBGS1XXX")
+        self.assertEqual(result[0]['country_ISO2'], "BG")
+        self.assertEqual(result[0]['country_name'], "BULGARIA")
+        self.assertEqual(result[0]['bank_name'], "ABV INVESTMENTS LTD")
+        self.assertEqual(result[0]['is_headquarter'], True)
 
         # Verify branch data
-        self.assertEqual(result['SWIFT CODE'][1], "ABIEBGS1123")
-        self.assertEqual(result['COUNTRY ISO2 CODE'][1], "BG")
-        self.assertEqual(result['COUNTRY NAME'][1], "BULGARIA")
-        self.assertEqual(result['NAME'][1], "")
-        self.assertEqual(result['TOWN NAME'][1], "VARNA")
-        self.assertEqual(result['TYPE'][1], "BRANCH")
-        self.assertEqual(result['HEADQUARTER_SWIFT_CODE'][1], "ABIEBGS1XXX")
+        self.assertEqual(result[1]['swift_code'], "ABIEBGS1123")
+        self.assertEqual(result[1]['country_ISO2'], "BG")
+        self.assertEqual(result[1]['country_name'], "BULGARIA")
+        self.assertEqual(result[1]['bank_name'], "")
+        self.assertEqual(result[1]['is_headquarter'], False)
 
     def test_invalid_csv_file_1(self):
         """
@@ -239,27 +235,28 @@ class ParseSwiftDataTest(unittest.TestCase):
         """
         result = parse_swift_data("test/data/test_14.csv")
 
-        self.assertEqual(result['SWIFT CODE'][0], "ABIEBGS1123")
-        self.assertEqual(result['SWIFT CODE'][1], "ABIEBGS1122")
-
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]['swift_code'], "ABIEBGS1123")
+        self.assertEqual(result[1]['swift_code'], "ABIEBGS1122")
+        
     def test_branch_ends_with_XXX(self):
         """
-        Test case: A CSV file with a branch SWIFT code ending with XXX is passed to the parse_swift_data function.
-        Expected behavior: The function correctly identifies it as a branch based on the relationship to its headquarters.
+        Test case: A CSV file with a SWIFT code ending with XXX is passed to the parse_swift_data function.
+        Expected behavior: The function correctly identifies it as a headquarters based on whether it ends with XXX.
         """
         result = parse_swift_data("test/data/test_15.csv")
 
-        self.assertEqual(result['SWIFT CODE'][0], "ABIEBXXX")
-        self.assertEqual(result['TYPE'][0], "BRANCH")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['swift_code'], "ABIEBXXX")
+        self.assertEqual(result[0]['is_headquarter'], False)
 
     def test_dataset_headers_only(self):
         """
         Test case: A CSV file with only headers and no data rows is passed to the parse_swift_data function.
-        Expected behavior: The function returns an empty DataFrame but does not raise an error.
+        Expected behavior: The function returns an empty list.
         """
         result = parse_swift_data("test/data/test_16.csv")
-
-        self.assertTrue(result.empty)
+        self.assertEqual(len(result), 0)
 
 
 if __name__ == "__main__":

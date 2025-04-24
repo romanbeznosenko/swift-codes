@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Optional
+from typing import List, Dict, Any
 import os
 import re
 
@@ -20,7 +20,7 @@ def is_valid_swift_code(code: str) -> bool:
     return True
 
 
-def parse_swift_data(file_path: str) -> Optional[pd.DataFrame]:
+def parse_swift_data(file_path: str) -> List[Dict[str, Any]]:
     if not file_path or not isinstance(file_path, str) or not file_path.strip():
         raise InvalidStringInputError
 
@@ -66,31 +66,27 @@ def parse_swift_data(file_path: str) -> Optional[pd.DataFrame]:
     df['COUNTRY ISO2 CODE'] = df['COUNTRY ISO2 CODE'].astype(str).str.upper()
     df['TOWN NAME'] = df['TOWN NAME'].astype(str).str.upper()
 
-    df = df[needed_columns]
+    df['is_headquarter'] = (df['SWIFT CODE'].fillna('').astype(str).str.len() == 11) & \
+                          (df['SWIFT CODE'].fillna('').astype(str).str.endswith('XXX'))
+    
+    df = df.rename(columns={
+        'SWIFT CODE': 'swift_code',
+        'ADDRESS': 'address',
+        'NAME': 'bank_name',
+        'COUNTRY ISO2 CODE': 'country_ISO2',
+        'COUNTRY NAME': 'country_name'
+    })
+    
+    result_df = df[['swift_code', 'address', 'bank_name', 'country_ISO2', 'country_name', 'is_headquarter']]
+    
+    result = result_df.to_dict(orient="records")
 
-    df['IS_HEADQUARTERS'] = df['SWIFT CODE'].fillna(
-        '').astype(str).str.endswith('XXX')
-    df['SWIFT BASE'] = df['SWIFT CODE'].str[:8]
-
-    def classify(code: str) -> str:
-        is_headquarter = code.endswith('XXX') and len(code) == 11
-        if is_headquarter:
-            return 'HEADQUARTERS'
-        else:
-            return 'BRANCH'
-
-    df['TYPE'] = df['SWIFT CODE'].apply(classify)
-
-    df['HEADQUARTER_SWIFT_CODE'] = df['SWIFT BASE'] + "XXX"
-
-    df = df.drop(columns=['IS_HEADQUARTERS', 'SWIFT BASE'])
-
-    return df
+    return result
 
 
 if __name__ == "__main__":
     try:
-        df = parse_swift_data("./data/Interns_2025_SWIFT_CODES - Sheet1.csv")
-        print(df.head)
+        result = parse_swift_data("./data/Interns_2025_SWIFT_CODES - Sheet1.csv")
+        print(result)
     except Exception as e:
         print(e)

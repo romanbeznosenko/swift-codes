@@ -5,7 +5,7 @@ from src.main import is_valid_swift_code
 class ISValidSwiftCodeTest(unittest.TestCase):
     """
     Unit test class for the function is_valid_swift_code. This class verifies that the function
-    correctly identifies valid and invalid SWIFT codes, and handles various edge cases and input typesś
+    correctly identifies valid and invalid SWIFT codes, and handles various edge cases and input types
     """
 
     def test_no_argument_passed(self):
