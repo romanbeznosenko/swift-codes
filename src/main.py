@@ -6,9 +6,9 @@ import re
 from custom_exceptions.MissingColumnError import MissingColumnError
 from custom_exceptions.InvalidStringInputError import InvalidStringInputError
 from custom_exceptions.FileNotFoundError import FileNotFoundError
-from custom_exceptions.FilePermissionDeniedError import FilePersmissionDeniedError
 from custom_exceptions.InvalidFileExtensionError import InvalidFileExtensionError
 from custom_exceptions.InvalidSwiftCodeError import InvalidSwiftCodeError
+from custom_exceptions.DuplicateSwiftCodeError import DuplicateSwiftCodeError
 
 
 def is_valid_swift_code(code: str) -> bool:
@@ -27,9 +27,6 @@ def parse_swift_data(file_path: str) -> Optional[pd.DataFrame]:
     if not os.path.isfile(file_path):
         raise FileNotFoundError
 
-    if not os.access(file_path, os.R_OK):
-        raise FilePersmissionDeniedError
-
     if not file_path.lower().endswith('.csv'):
         raise InvalidFileExtensionError
 
@@ -37,6 +34,8 @@ def parse_swift_data(file_path: str) -> Optional[pd.DataFrame]:
         df = pd.read_csv(file_path)
     except pd.errors.ParserError:
         raise pd.errors.ParserError
+    except pd.errors.EmptyDataError:
+        raise pd.errors.EmptyDataError
 
     needed_columns = [
         'SWIFT CODE',
@@ -55,11 +54,17 @@ def parse_swift_data(file_path: str) -> Optional[pd.DataFrame]:
     if not invalid_swift_code.empty:
         raise InvalidSwiftCodeError
 
+    duplicate_swift_code_exists = df['SWIFT CODE'].duplicated().any()
+    if duplicate_swift_code_exists:
+        raise DuplicateSwiftCodeError
+
     df.columns = df.columns.str.strip()
 
-    df['COUNTRY NAME'] = df['COUNTRY NAME'].fillna('').astype(str).str.upper()
-    df['COUNTRY ISO2 CODE'] = df['COUNTRY ISO2 CODE'].fillna(
-        '').astype(str).str.upper()
+    df = df.fillna('')
+
+    df['COUNTRY NAME'] = df['COUNTRY NAME'].astype(str).str.upper()
+    df['COUNTRY ISO2 CODE'] = df['COUNTRY ISO2 CODE'].astype(str).str.upper()
+    df['TOWN NAME'] = df['TOWN NAME'].astype(str).str.upper()
 
     df = df[needed_columns]
 
@@ -67,26 +72,16 @@ def parse_swift_data(file_path: str) -> Optional[pd.DataFrame]:
         '').astype(str).str.endswith('XXX')
     df['SWIFT BASE'] = df['SWIFT CODE'].str[:8]
 
-    headquarter_set = set(df[df['IS_HEADQUARTERS']]['SWIFT BASE'])
-
     def classify(code: str) -> str:
-        is_headquarter = code.endswith('XXX')
-        base = code[:8]
-        is_branch = base in headquarter_set
-        if is_headquarter and is_branch:
-            return 'BOTH'
-        elif is_headquarter:
+        is_headquarter = code.endswith('XXX') and len(code) == 11
+        if is_headquarter:
             return 'HEADQUARTERS'
-        elif is_branch:
-            return 'BRANCH'
         else:
-            return 'UNKNOWN'
+            return 'BRANCH'
 
     df['TYPE'] = df['SWIFT CODE'].apply(classify)
 
-    headquarter_map = df[df['IS_HEADQUARTERS']].set_index('SWIFT BASE')[
-        'SWIFT CODE'].to_dict()
-    df['HEADQUARTER_SWIFT_CODE'] = df['SWIFT BASE'].map(headquarter_map)
+    df['HEADQUARTER_SWIFT_CODE'] = df['SWIFT BASE'] + "XXX"
 
     df = df.drop(columns=['IS_HEADQUARTERS', 'SWIFT BASE'])
 
