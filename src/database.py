@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, MetaData, Table, Column, String, Boolean
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.exc import SQLAlchemyError
-from src.main import parse_swift_data
+from src.parse import parse_swift_data
 import os
 from dotenv import load_dotenv
 

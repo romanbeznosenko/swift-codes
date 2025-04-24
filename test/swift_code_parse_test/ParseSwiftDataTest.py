@@ -1,5 +1,5 @@
 import unittest
-from src.main import parse_swift_data
+from src.parse import parse_swift_data
 import pandas as pd
 
 from custom_exceptions.InvalidStringInputError import InvalidStringInputError
