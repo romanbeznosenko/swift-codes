@@ -43,7 +43,6 @@ def parse_swift_data(file_path: str) -> List[Dict[str, Any]]:
         'COUNTRY NAME',
         'NAME',
         'ADDRESS',
-        'TOWN NAME',
     ]
 
     for column_name in needed_columns:
@@ -62,9 +61,10 @@ def parse_swift_data(file_path: str) -> List[Dict[str, Any]]:
 
     df = df.fillna('')
 
-    df['COUNTRY NAME'] = df['COUNTRY NAME'].astype(str).str.upper()
-    df['COUNTRY ISO2 CODE'] = df['COUNTRY ISO2 CODE'].astype(str).str.upper()
-    df['TOWN NAME'] = df['TOWN NAME'].astype(str).str.upper()
+    df['COUNTRY NAME'] = df['COUNTRY NAME'].astype(str).str.upper().str.strip()
+    df['COUNTRY ISO2 CODE'] = df['COUNTRY ISO2 CODE'].astype(str).str.upper().str.strip()
+    df['ADDRESS'] = df['ADDRESS'].fillna('').astype(str).str.upper().str.strip()
+    df['NAME'] = df['NAME'].fillna('').astype(str).str.upper().str.strip()
 
     df['is_headquarter'] = (df['SWIFT CODE'].fillna('').astype(str).str.len() == 11) & \
                           (df['SWIFT CODE'].fillna('').astype(str).str.endswith('XXX'))
