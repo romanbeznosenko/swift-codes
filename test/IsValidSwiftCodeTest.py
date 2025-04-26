@@ -1,5 +1,5 @@
 import unittest
-from src.parse import is_valid_swift_code
+from utils.validators import is_valid_swift_code
 
 
 class ISValidSwiftCodeTest(unittest.TestCase):

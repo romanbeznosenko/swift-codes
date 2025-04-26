@@ -1,7 +1,8 @@
 import pandas as pd
 from typing import List, Dict, Any
 import os
-import re
+
+from utils.validators import is_valid_swift_code
 
 from custom_exceptions.MissingColumnError import MissingColumnError
 from custom_exceptions.InvalidStringInputError import InvalidStringInputError
@@ -9,15 +10,6 @@ from custom_exceptions.FileNotFoundError import FileNotFoundError
 from custom_exceptions.InvalidFileExtensionError import InvalidFileExtensionError
 from custom_exceptions.InvalidSwiftCodeError import InvalidSwiftCodeError
 from custom_exceptions.DuplicateSwiftCodeError import DuplicateSwiftCodeError
-
-
-def is_valid_swift_code(code: str) -> bool:
-    if not isinstance(code, str):
-        return False
-
-    if not re.match(r'^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$', code):
-        return False
-    return True
 
 
 def parse_swift_data(file_path: str) -> List[Dict[str, Any]]:
@@ -62,13 +54,15 @@ def parse_swift_data(file_path: str) -> List[Dict[str, Any]]:
     df = df.fillna('')
 
     df['COUNTRY NAME'] = df['COUNTRY NAME'].astype(str).str.upper().str.strip()
-    df['COUNTRY ISO2 CODE'] = df['COUNTRY ISO2 CODE'].astype(str).str.upper().str.strip()
-    df['ADDRESS'] = df['ADDRESS'].fillna('').astype(str).str.upper().str.strip()
+    df['COUNTRY ISO2 CODE'] = df['COUNTRY ISO2 CODE'].astype(
+        str).str.upper().str.strip()
+    df['ADDRESS'] = df['ADDRESS'].fillna(
+        '').astype(str).str.upper().str.strip()
     df['NAME'] = df['NAME'].fillna('').astype(str).str.upper().str.strip()
 
     df['is_headquarter'] = (df['SWIFT CODE'].fillna('').astype(str).str.len() == 11) & \
-                          (df['SWIFT CODE'].fillna('').astype(str).str.endswith('XXX'))
-    
+        (df['SWIFT CODE'].fillna('').astype(str).str.endswith('XXX'))
+
     df = df.rename(columns={
         'SWIFT CODE': 'swift_code',
         'ADDRESS': 'address',
@@ -76,9 +70,10 @@ def parse_swift_data(file_path: str) -> List[Dict[str, Any]]:
         'COUNTRY ISO2 CODE': 'country_ISO2',
         'COUNTRY NAME': 'country_name'
     })
-    
-    result_df = df[['swift_code', 'address', 'bank_name', 'country_ISO2', 'country_name', 'is_headquarter']]
-    
+
+    result_df = df[['swift_code', 'address', 'bank_name',
+                    'country_ISO2', 'country_name', 'is_headquarter']]
+
     result = result_df.to_dict(orient="records")
 
     return result
@@ -86,7 +81,8 @@ def parse_swift_data(file_path: str) -> List[Dict[str, Any]]:
 
 if __name__ == "__main__":
     try:
-        result = parse_swift_data("./data/Interns_2025_SWIFT_CODES - Sheet1.csv")
+        result = parse_swift_data(
+            "./data/Interns_2025_SWIFT_CODES - Sheet1.csv")
         print(result)
     except Exception as e:
         print(e)
