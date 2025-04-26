@@ -2,7 +2,7 @@ import pandas as pd
 from typing import List, Dict, Any
 import os
 
-from utils.validators import is_valid_swift_code
+from app.utils.validators import is_valid_swift_code
 
 from custom_exceptions.MissingColumnError import MissingColumnError
 from custom_exceptions.InvalidStringInputError import InvalidStringInputError

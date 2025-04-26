@@ -1,4 +1,23 @@
+version: '3.8'
+
 services:
+  app:
+    container_name: swift_api
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    depends_on:
+      - mysql
+    volumes:
+      - ./data:/app/data
+
   mysql:
     container_name: db
     image: mysql:latest
@@ -10,6 +29,8 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
   
   mysql_test:
     container_name: db_test
@@ -22,3 +43,22 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3307:3306"
+      
+  data_loader:
+    container_name: data_loader
+    build: .
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    depends_on:
+      - mysql
+    volumes:
+      - ./data:/app/data
+    command: python scripts/load_data.py
+    restart: on-failure
+
+volumes:
+  mysql_data:

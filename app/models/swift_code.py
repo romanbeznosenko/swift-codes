@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Boolean, Index
 from sqlalchemy.sql import expression
-from app.db.database import Base, metdata
+from app.db.database import Base, metadata
 
 
 class SwiftCodeModel(Base):
@@ -29,14 +29,14 @@ class SwiftCodeModel(Base):
         return f"<SwiftCode {self.swift_code} ({self.bank_name})"
 
 
-swift_codes = metdata.tables.get("swift_codes")
+swift_codes = metadata.tables.get("swift_codes")
 
 if swift_codes is None:
     from sqlalchemy import Table, Column, String, Boolean, MetaData
-    from app.db.database import metdata
+    from app.db.database import metadata
 
     swift_codes = Table(
-        "swift_codes", metdata,
+        "swift_codes", metadata,
         Column("swift_code", String(11), primary_key=True, unique=True),
         Column("address", String(255), nullable=True),
         Column("bank_name", String(255), nullable=True),
