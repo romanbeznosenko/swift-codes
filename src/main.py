@@ -23,7 +23,6 @@ def find_all_branches(swift_code: str) -> List[tuple]:
     
     return result
 
-
 engine = create_engine(DATABASE_URL)
 metadata = MetaData()
 
