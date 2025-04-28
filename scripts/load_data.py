@@ -9,8 +9,7 @@ making it suitable for use in containerized environments where the database may 
 after this script.
 """
 
-from app.core.parser import parse_swift_data
-from app.models.swift_code import swift_codes
+
 import time
 import sys
 import os
@@ -19,6 +18,9 @@ from sqlalchemy.exc import OperationalError
 
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..')))
+
+from app.core.parser import parse_swift_data
+from app.models.swift_code import swift_codes
 
 
 DB_USER = os.getenv("MYSQL_USER")
