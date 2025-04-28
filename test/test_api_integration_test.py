@@ -1,0 +1,254 @@
+import os
+import unittest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from dotenv import load_dotenv
+
+from main import app
+from app.db.database import get_db, Base
+from app.models.swift_code import SwiftCodeModel
+
+load_dotenv()
+
+MYSQL_USER: str = os.getenv("MYSQL_USER", "user")
+MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "password")
+MYSQL_HOST: str = os.getenv("MYSQL_HOST", "localhost")
+MYSQL_TEST_DATABASE: str = os.getenv("MYSQL_TEST_DATABASE", "test_swift_codes")
+
+TEST_DB_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:3307/{MYSQL_TEST_DATABASE}"
+
+
+class IntegrationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.engine = create_engine(
+            TEST_DB_URL,
+            poolclass=StaticPool
+        )
+        cls.TestingSessionLocal = sessionmaker(
+            autoflush=False, bind=cls.engine)
+
+        Base.metadata.create_all(bind=cls.engine)
+
+    def setUp(self):
+        self.db = self.TestingSessionLocal()
+
+        def override_get_db():
+            try:
+                yield self.db
+            finally:
+                pass
+
+        app.dependency_overrides[get_db] = override_get_db
+
+        self.client = TestClient(app)
+        self.setup_test_data()
+
+    def setup_test_data(self):
+        hq = SwiftCodeModel(
+            swift_code="AAAAUSCCXXX",
+            address="123 Main St, HQ",
+            bank_name="Test Bank",
+            country_ISO2="US",
+            country_name="UNITED STATES",
+            is_headquarter=True
+        )
+
+        branch1 = SwiftCodeModel(
+            swift_code="AAAAUSCC123",
+            address="456 Branch Ave",
+            bank_name="Test Bank Branch 1",
+            country_ISO2="US",
+            country_name="UNITED STATES",
+            is_headquarter=False
+        )
+
+        branch2 = SwiftCodeModel(
+            swift_code="AAAAUSCC321",
+            address="789 Branch Blvd",
+            bank_name="Test Bank Branch 2",
+            country_ISO2="US",
+            country_name="UNITED STATES",
+            is_headquarter=False
+        )
+
+        other_bank = SwiftCodeModel(
+            swift_code="ZZYYCAWW123",
+            address="999 Other St",
+            bank_name="Other Bank",
+            country_ISO2="CA",
+            country_name="CANADA",
+            is_headquarter=True
+        )
+
+        self.db.add_all([hq, branch1, branch2, other_bank])
+        self.db.commit()
+
+    def tearDown(self):
+        for table in reversed(Base.metadata.sorted_tables):
+            self.db.execute(table.delete())
+        self.db.commit()
+
+        app.dependency_overrides.clear()
+
+        self.db.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        Base.metadata.drop_all(bind=cls.engine)
+
+    def test_get_swift_code_by_id_headquarter(self):
+        response = self.client.get("/v1/swift-codes/AAAAUSCCXXX")
+
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertEqual(data["swiftCode"], "AAAAUSCCXXX")
+        self.assertEqual(data["bankName"], "Test Bank")
+        self.assertEqual(data["countryISO2"], "US")
+        self.assertTrue(data["isHeadquarter"])
+        self.assertIn("branches", data)
+        self.assertEqual(len(data["branches"]), 2)
+
+    def test_get_swift_code_by_id_branch(self):
+        response = self.client.get("/v1/swift-codes/AAAAUSCC123")
+
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertEqual(data["swiftCode"], "AAAAUSCC123")
+        self.assertEqual(data["bankName"], "Test Bank Branch 1")
+        self.assertEqual(data["countryISO2"], "US")
+        self.assertFalse(data["isHeadquarter"])
+        self.assertNotIn("branches", data)
+
+    def test_get_swift_code_by_id_not_found(self):
+        response = self.client.get("/v1/swift-codes/123412431")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("detail", response.json())
+
+    def test_get_swift_code_by_country_code(self):
+        response = self.client.get("/v1/swift-codes/country/US")
+
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertEqual(data["countryISO2"], "US")
+        self.assertEqual(data["countryName"], "UNITED STATES")
+        self.assertEqual(len(data["swiftCodes"]), 3)
+
+    def test_get_swift_by_country_not_found(self):
+        response = self.client.get("/v1/swift-codes/country/ZX")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("detail", response.json())
+
+    def test_create_swift_code_success(self):
+        new_code = {
+            "address": "Test Address",
+            "bankName": "testBank",
+            "countryISO2": "FR",
+            "countryName": "FRANCE",
+            "isHeadquarter": True,
+            "swiftCode": "NEWBFRBBXXX"
+        }
+
+        response = self.client.post("/v1/swift-codes", json=new_code)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.json()["message"], "SWIFT code record created successfully.")
+
+        get_response = self.client.get("/v1/swift-codes/NEWBFRBBXXX")
+        self.assertEqual(get_response.status_code, 200)
+        self.assertEqual(get_response.json()["bankName"], "testBank")
+
+    def test_create_swift_code_duplicate(self):
+        duplicate_code = {
+            "address": "Duplicate Address",
+            "bankName": "Duplicate Bank",
+            "countryISO2": "US",
+            "countryName": "UNITED STATES",
+            "isHeadquarter": False,
+            "swiftCode": "AAAAUSCC123"
+        }
+
+        response = self.client.post("/v1/swift-codes", json=duplicate_code)
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("already exists", response.json()["detail"])
+
+    def test_create_swift_code_invalid_fromat(self):
+        invalid_code = {
+            "address": "Invalid Address",
+            "bankName": "Invalid Bank",
+            "countryISO2": "US",
+            "countryName": "UNITED STATES",
+            "isHeadquarter": False,
+            "swiftCode": "INVALID"
+        }
+
+        response = self.client.post("/v1/swift-codes", json=invalid_code)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("Invalid SWIFT code format",
+                      response.json()["detail"][0]["msg"])
+
+    def test_create_swift_code_country_mismatch(self):
+        mismatch_code = {
+            "address": "Mismatch Address",
+            "bankName": "Mismatch Bank",
+            "countryISO2": "US",
+            "countryName": "UNITED STATES",
+            "isHeadquarter": False,
+            "swiftCode": "TESTFRBB123"
+        }
+
+        response = self.client.post("/v1/swift-codes", json=mismatch_code)
+
+        self.assertEqual(response.status_code, 422)
+        error_detail = response.json()["detail"]
+        self.assertTrue(
+            any("Country ISO2 code must match the country code in the SWIFT code" in str(
+                error) for error in error_detail),
+            f"Expected error message not found in: {error_detail}"
+        )
+
+    def test_create_swift_code_invalid_headquarter(self):
+        invalid_hq = {
+            "address": "Invalid HQ",
+            "bankName": "Invalid HQ Bank",
+            "countryISO2": "DE",
+            "countryName": "GERMANY",
+            "isHeadquarter": False,
+            "swiftCode": "TESTDEBBXXX"
+        }
+
+        response = self.client.post("/v1/swift-codes", json=invalid_hq)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("'XXX' must be marked as headquarters",
+                      response.json()["detail"][0]["msg"])
+
+    def test_delete_swift_code_success(self):
+        response = self.client.delete("v1/swift-codes/AAAAUSCC123")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["message"], "SWIFT code record deleted successfully")
+
+        get_response = self.client.get("/v1/swift-codes/AAAAUSCC123")
+        self.assertEqual(get_response.status_code, 404)
+
+    def test_delete_swift_code_not_found(self):
+        response = self.client.delete("v1/swift-codes/NONEXIST")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("not found", response.json()["detail"])
+
+
+if __name__ == "__main__":
+    unittest.main()

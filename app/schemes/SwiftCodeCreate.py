@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, ValidationInfo
+from pydantic import BaseModel, field_validator, ValidationInfo, model_validator
 from app.utils.validators import is_valid_swift_code
 
 
@@ -19,6 +19,17 @@ class SwiftCodeCreate(BaseModel):
         if not is_valid_swift_code(v):
             raise ValueError('Invalid SWIFT code format')
         return v
+    
+    @model_validator(mode='after')
+    def validate_fields_together(self):
+        if self.swiftCode and self.countryISO2:
+            if self.countryISO2 != self.swiftCode[4:6]:
+                raise ValueError("Country ISO2 code must match the country code in the SWIFT code")
+        
+        if self.swiftCode and len(self.swiftCode) == 11 and self.swiftCode[-3:] == "XXX" and not self.isHeadquarter:
+            raise ValueError("SWIFT codes ending with 'XXX' must be marked as headquarters")
+            
+        return self
 
     @field_validator('countryISO2')
     def validate_country_code(cls, v, info: ValidationInfo):
