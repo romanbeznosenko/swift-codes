@@ -44,8 +44,8 @@ swift-codes-api/
 │   └── load_data.py             # Script to load data from CSV to database
 ├── test/                        # Test files
 │   ├── test_api_integration_test.py
-│   ├── test_is_valid_swift_code.py
-│   └── test_parse_swift_data.py
+│   ├── IsValidSwiftCodeTest.py
+│   └── ParseSwiftDataTest.py
 ├── .env                         # Environment variables
 ├── main.py                      # Application entry point
 ├── Dockerfile                   # Container definition
