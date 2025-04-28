@@ -221,6 +221,11 @@ python -m unittest test.test_api_integration_test
 ### Unit Tests
 Unit tests can be run independently of the database
 
+Install dependencies
+``` bash
+pip install -r requirements.txt
+```
+
 ``` bash
 # Run SWIFT code validation tests
 python -m unittest test.IsValidSwiftCodeTest
