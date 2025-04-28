@@ -209,7 +209,11 @@ The integration test requires a test database. A separate test database containe
 ``` bash
 docker-compose up -d mysql_test
 ```
-2. Run the integration tests:
+2. Install dependencies
+``` bash
+pip install -r requirements.txt
+```
+3. Run the integration tests:
 ``` bash
 python -m unittest test.test_api_integration_test
 ```
