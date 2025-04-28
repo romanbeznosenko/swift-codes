@@ -35,6 +35,7 @@ def init_db():
     from app.models.swift_code import SwiftCodeModel
     Base.metadata.create_all(bind=engine)
 
+
 def test_connection():
     """
     Try database connection, return True if successful.
@@ -43,7 +44,7 @@ def test_connection():
     try:
         with engine.begin() as conn:
             conn.execute("SELECT 1")
-        return True 
+        return True
     except Exception as e:
         print(f"Database connection error: {e}")
         return False

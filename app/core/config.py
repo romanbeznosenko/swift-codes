@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     MYSQL_DATABASE: str = os.getenv("MYSQL_DATABASE", "swift_codes")
 
     MYSQL_ROOT_PASSWORD: str = os.getenv("MYSQL_ROOT_PASSWORD", "rootpassword")
-    MYSQL_TEST_DATABASE: str = os.getenv("MYSQL_TEST_DATABASE", "test_swift_codes")
+    MYSQL_TEST_DATABASE: str = os.getenv(
+        "MYSQL_TEST_DATABASE", "test_swift_codes")
     PORT: str = os.getenv("PORT", "3306")
 
     @property

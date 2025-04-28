@@ -38,7 +38,7 @@ def parse_swift_data(file_path: str) -> List[Dict[str, Any]]:
         InvalidSwiftCodeError: If any SWIFT codes in the file are not valid.
         DuplicateSwiftCodeError: If the file contains duplicate SWIFT codes.
     """
-        
+
     if not file_path or not isinstance(file_path, str) or not file_path.strip():
         raise InvalidStringInputError
 
