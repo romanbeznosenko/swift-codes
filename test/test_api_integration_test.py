@@ -21,8 +21,27 @@ TEST_DB_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:3307/
 
 
 class IntegrationTests(unittest.TestCase):
+    """
+    Integration test suite for the Swift Codes API.
+
+    This test suite verifies that all API endpoints work correctly, including:
+    - Retrieving SWIFT codes by ID (both headquarters and branches)
+    - Retrieving SWIFT codes by country
+    - Creating new SWIFT codes (with validation)
+    - Deleting existing SWIFT codes
+
+    Each test method focuses on a specific aspect of the API's functionality.
+    """
+
     @classmethod
     def setUpClass(cls):
+        """
+        Set up test environment before any tests run.
+
+        Creates a database engine and session factory that will be used for all tests.
+        Also creates all database tables needed for testing.
+        """
+
         cls.engine = create_engine(
             TEST_DB_URL,
             poolclass=StaticPool
@@ -33,6 +52,13 @@ class IntegrationTests(unittest.TestCase):
         Base.metadata.create_all(bind=cls.engine)
 
     def setUp(self):
+        """
+        Set up test environment before each test.
+
+        Creates a new database session, overrides the database dependency,
+        initializes the test client, and populates the database with test data.
+        """
+
         self.db = self.TestingSessionLocal()
 
         def override_get_db():
@@ -47,6 +73,16 @@ class IntegrationTests(unittest.TestCase):
         self.setup_test_data()
 
     def setup_test_data(self):
+        """
+        Create test data in the database.
+
+        Adds sample SWIFT codes including:
+        - A headquarter bank in the US with two branches
+        - Another bank in Canada
+
+        This data is used by various test methods to verify API functionality.
+        """
+
         hq = SwiftCodeModel(
             swift_code="AAAAUSCCXXX",
             address="123 Main St, HQ",
@@ -87,6 +123,13 @@ class IntegrationTests(unittest.TestCase):
         self.db.commit()
 
     def tearDown(self):
+        """
+        Clean up after each test.
+
+        Deletes all data from all tables, clears dependency overrides,
+        and closes the database session.
+        """
+
         for table in reversed(Base.metadata.sorted_tables):
             self.db.execute(table.delete())
         self.db.commit()
@@ -97,9 +140,25 @@ class IntegrationTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        """
+        Clean up after all tests have run.
+
+        Drops all tables from the test database.
+        """
+
         Base.metadata.drop_all(bind=cls.engine)
 
     def test_get_swift_code_by_id_headquarter(self):
+        """
+        Test retrieving a headquarter SWIFT code.
+
+        Verifies that:
+        - The response status is 200 OK
+        - The correct SWIFT code data is returned
+        - The headquarter flag is set to true
+        - The response includes a list of branches
+        """
+
         response = self.client.get("/v1/swift-codes/AAAAUSCCXXX")
 
         self.assertEqual(response.status_code, 200)
@@ -113,6 +172,16 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(len(data["branches"]), 2)
 
     def test_get_swift_code_by_id_branch(self):
+        """
+        Test retrieving a branch SWIFT code.
+
+        Verifies that:
+        - The response status is 200 OK
+        - The correct SWIFT code data is returned
+        - The headquarter flag is set to false
+        - The response does not include a branches list
+        """
+
         response = self.client.get("/v1/swift-codes/AAAAUSCC123")
 
         self.assertEqual(response.status_code, 200)
@@ -125,12 +194,29 @@ class IntegrationTests(unittest.TestCase):
         self.assertNotIn("branches", data)
 
     def test_get_swift_code_by_id_not_found(self):
+        """
+        Test retrieving a non-existent SWIFT code.
+
+        Verifies that:
+        - The response status is 404 Not Found
+        - The response includes an error detail
+        """
+
         response = self.client.get("/v1/swift-codes/123412431")
 
         self.assertEqual(response.status_code, 404)
         self.assertIn("detail", response.json())
 
     def test_get_swift_code_by_country_code(self):
+        """
+        Test retrieving all SWIFT codes for a specific country.
+
+        Verifies that:
+        - The response status is 200 OK
+        - The response includes the correct country information
+        - The response includes all SWIFT codes for that country
+        """
+
         response = self.client.get("/v1/swift-codes/country/US")
 
         self.assertEqual(response.status_code, 200)
@@ -141,12 +227,29 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(len(data["swiftCodes"]), 3)
 
     def test_get_swift_by_country_not_found(self):
+        """
+        Test retrieving SWIFT codes for a non-existent country.
+
+        Verifies that:
+        - The response status is 404 Not Found
+        - The response includes an error detail
+        """
+
         response = self.client.get("/v1/swift-codes/country/ZX")
 
         self.assertEqual(response.status_code, 404)
         self.assertIn("detail", response.json())
 
     def test_create_swift_code_success(self):
+        """
+        Test successfully creating a new SWIFT code.
+
+        Verifies that:
+        - The response status is 201 Created
+        - The response includes a success message
+        - The created SWIFT code can be retrieved using the GET endpoint
+        """
+
         new_code = {
             "address": "Test Address",
             "bankName": "testBank",
@@ -167,6 +270,14 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(get_response.json()["bankName"], "testBank")
 
     def test_create_swift_code_duplicate(self):
+        """
+        Test creating a duplicate SWIFT code.
+
+        Verifies that:
+        - The response status is 409 Conflict
+        - The response includes an error message about duplicate SWIFT code
+        """
+
         duplicate_code = {
             "address": "Duplicate Address",
             "bankName": "Duplicate Bank",
@@ -182,6 +293,14 @@ class IntegrationTests(unittest.TestCase):
         self.assertIn("already exists", response.json()["detail"])
 
     def test_create_swift_code_invalid_fromat(self):
+        """
+        Test creating a SWIFT code with invalid format.
+
+        Verifies that:
+        - The response status is 422 Unprocessable Entity
+        - The response includes an error message about invalid format
+        """
+
         invalid_code = {
             "address": "Invalid Address",
             "bankName": "Invalid Bank",
@@ -198,6 +317,14 @@ class IntegrationTests(unittest.TestCase):
                       response.json()["detail"][0]["msg"])
 
     def test_create_swift_code_country_mismatch(self):
+        """
+        Test creating a SWIFT code with country code mismatch.
+
+        Verifies that:
+        - The response status is 422 Unprocessable Entity
+        - The response includes an error message about country code mismatch
+        """
+
         mismatch_code = {
             "address": "Mismatch Address",
             "bankName": "Mismatch Bank",
@@ -218,6 +345,14 @@ class IntegrationTests(unittest.TestCase):
         )
 
     def test_create_swift_code_invalid_headquarter(self):
+        """
+        Test creating a SWIFT code with invalid headquarter designation.
+
+        Verifies that:
+        - The response status is 422 Unprocessable Entity
+        - The response includes an error message about headquarter designation
+        """
+
         invalid_hq = {
             "address": "Invalid HQ",
             "bankName": "Invalid HQ Bank",
@@ -234,6 +369,15 @@ class IntegrationTests(unittest.TestCase):
                       response.json()["detail"][0]["msg"])
 
     def test_delete_swift_code_success(self):
+        """
+        Test successfully deleting a SWIFT code.
+
+        Verifies that:
+        - The response status is 200 OK
+        - The response includes a success message
+        - The deleted SWIFT code cannot be retrieved using the GET endpoint
+        """
+
         response = self.client.delete("v1/swift-codes/AAAAUSCC123")
 
         self.assertEqual(response.status_code, 200)
@@ -244,6 +388,14 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(get_response.status_code, 404)
 
     def test_delete_swift_code_not_found(self):
+        """
+        Test deleting a non-existent SWIFT code.
+
+        Verifies that:
+        - The response status is 404 Not Found
+        - The response includes an error message about SWIFT code not found
+        """
+
         response = self.client.delete("v1/swift-codes/NONEXIST")
 
         self.assertEqual(response.status_code, 404)
